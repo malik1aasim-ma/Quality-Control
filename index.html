@@ -3,895 +3,406 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quality Management Portal</title>
+    <title>Daily Quality Inspection Log (AQL 2.5)</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; color: #1f2937; }
-        
-        /* Auth Portal Layout */
-        header.auth-header { background-color: #2563eb; color: white; padding: 20px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        main.auth-main { max-width: 400px; width: 100%; margin: auto; padding: 20px; box-sizing: border-box; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
-        .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f3f4f6; }
-        .space-y { display: flex; flex-direction: column; gap: 15px; }
-        .text-center { text-align: center; }
-        label { display: block; font-size: 11px; font-weight: bold; color: #4b5563; text-transform: uppercase; margin-bottom: 4px; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; outline: none; font-size: 14px; }
-        input:focus, select:focus, textarea:focus { border-color: #2563eb; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-        button { padding: 12px; border: none; border-radius: 10px; font-weight: bold; color: white; cursor: pointer; font-size: 15px; }
-        .w-full { width: 100%; }
-        .btn-blue { background-color: #2563eb; }
-        .btn-blue:hover { background-color: #1d4ed8; }
-        .btn-green { background-color: #059669; }
-        .btn-green:hover { background-color: #047857; }
-        .btn-red { background-color: #ef4444; }
-        .btn-red:hover { background-color: #dc2626; }
-        .link-btn { background: none; border: none; color: #2563eb; font-weight: bold; text-decoration: underline; cursor: pointer; padding: 0; font-size: 14px; }
-        footer { background-color: #e5e7eb; padding: 12px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #d1d5db; }
-
-        /* ====== HOME DASHBOARD SCREEN RULES ====== */
-        #homeScreen { display: none; flex-direction: column; min-height: 100vh; width: 100%; background-color: #f9fafb; position: absolute; top: 0; left: 0; z-index: 50; }
-        .dashboard-header { background-color: #1e3a8a; color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        
-        /* Burger Menu Icon */
-        .burger-btn { background: none; border: none; color: white; cursor: pointer; padding: 5px; display: flex; flex-direction: column; gap: 5px; width: 30px; }
-        .burger-bar { height: 3px; width: 100%; background-color: white; border-radius: 2px; transition: 0.3s; }
-        .dashboard-title { margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 0.5px; }
-        .logout-link-btn { background: none; border: 1px solid rgba(255,255,255,0.4); color: white; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; width: auto; }
-        .logout-link-btn:hover { background-color: rgba(255,255,255,0.1); }
-
-        /* Slide-out Navigation Drawer Overlay */
-        .drawer-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); z-index: 100; }
-        .side-drawer { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background-color: white; box-shadow: 4px 0 10px rgba(0,0,0,0.1); z-index: 101; transition: left 0.3s ease-in-out; display: flex; flex-direction: column; }
-        .drawer-header { background-color: #1e3a8a; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .drawer-header h3 { margin: 0; font-size: 18px; }
-        .close-drawer-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; line-height: 1; }
-        
-        /* Drawer Menu Options List */
-        .drawer-menu-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; overflow-y: auto; }
-        .drawer-menu-item { border-bottom: 1px solid #e5e7eb; }
-        .drawer-menu-link { display: block; padding: 14px 20px; color: #374151; font-weight: 600; text-decoration: none; font-size: 14px; transition: background-color 0.2s; }
-        .drawer-menu-link:hover { background-color: #eff6ff; color: #2563eb; }
-
-        .dashboard-content { padding: 20px; flex-grow: 1; width: 100%; box-sizing: border-box; }
-        .workspace-card { background: white; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 25px; }
-        .workspace-title-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
-        .workspace-title-bar h3 { margin: 0; color: #1e3a8a; font-size: 22px; }
-        
-        /* Control Toolbar */
-        .table-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 12px; }
-        .search-input { max-width: 300px; width: 100%; }
-        .add-btn { background-color: #059669; color: white; border-radius: 8px; padding: 10px 18px; font-size: 14px; font-weight: bold; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-        .add-btn:hover { background-color: #047857; }
-
-        /* Tables & Layout Structure */
-        .table-container { width: 100%; overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 10px; }
-        .style-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; background-color: white; min-width: 1000px; }
-        .style-table th { background-color: #f8fafc; color: #1e293b; font-weight: 700; padding: 12px; border: 1px solid #e2e8f0; }
-        .style-table td { padding: 12px; border: 1px solid #e2e8f0; color: #334155; vertical-align: middle; }
-        .style-table tr:nth-child(even) { background-color: #f8fafc; }
-        .style-table tr:hover { background-color: #f1f5f9; }
-        
-        .dept-title-cell { font-weight: bold; color: #1e3a8a; font-size: 14px; background-color: #f1f5f9 !important; text-align: left; padding-left: 20px; }
-
-        .status-ok { background-color: #d1fae5; color: #065f46; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 11px; display: inline-block; }
-        .status-not-ok { background-color: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 11px; display: inline-block; }
-        .cell-img-placeholder { color: #94a3b8; font-size: 11px; font-style: italic; }
-        .cell-link { color: #2563eb; text-decoration: none; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
-        .cell-link:hover { text-decoration: underline; }
-        .edit-action-btn { background-color: #3b82f6; color: white; font-size: 11px; padding: 4px 8px; border-radius: 4px; font-weight: bold; border: none; cursor: pointer; }
-        
-        /* Modal Popup Layer */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 200; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
-        .modal-box { background: white; max-width: 550px; width: 100%; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
-        .modal-header { background-color: #1e3a8a; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .modal-header h4 { margin: 0; font-size: 16px; }
-        .modal-close { background: none; border: none; color: white; font-size: 22px; cursor: pointer; }
-        .modal-body { padding: 20px; max-height: 80vh; overflow-y: auto; }
-        .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .sub-section-title { font-size: 12px; font-weight: bold; color: #1e3a8a; text-transform: uppercase; display: block; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px; }
-
-        /* Report Specific Boxes */
-        .inspection-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .qc-section-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
-        .critical-warning { display: none; background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 10px; border-radius: 6px; font-size: 12px; font-weight: bold; margin-bottom: 15px; text-align: center; }
-        
-        /* Modern Native Dashboard Styling */
-        .mt-4 { margin-top: 20px; }
-        .flex-wrap { flex-wrap: wrap; }
-        .gap-2 { gap: 8px; }
-        .img-thumbnail-card { width: 100px; height: 100px; object-fit: cover; border: 2px solid #cbd5e1; border-radius: 8px; cursor: pointer; transition: transform 0.2s; }
-        .img-thumbnail-card:hover { transform: scale(1.05); border-color: #2563eb; }
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; display: inline-block; }
-        .bg-success { background-color: #10b981; }
-        .bg-danger { background-color: #ef4444; }
-        .report-grid-details h6 { margin: 4px 0; color: #4b5563; }
-        .report-counter-value { font-size: 24px; font-weight: bold; margin: 5px 0 0 0; }
-        .text-warning { color: #f59e0b; }
-        .text-primary { color: #3b82f6; }
-        .text-danger { color: #ef4444; }
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow: hidden; }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased pdf-content">
 
-    <div id="authPortalScreen" style="display: flex; flex-direction: column; min-height: 100vh; justify-content: space-between;">
-        <header class="auth-header">
-            <h1 style="margin: 0; font-size: 24px;">Quality Management Portal</h1>
-        </header>
-
-        <main class="auth-main">
-            <div class="card">
-                <div id="loginPanel" class="space-y" style="display: block;">
-                    <div class="text-center">
-                        <h2 style="margin: 0; font-size: 20px;">Welcome Back</h2>
-                        <p style="color: #6b7280; font-size: 12px; margin: 5px 0 0 0;">Enter your registered mobile credentials to log in.</p>
-                    </div>
-                    <form id="loginForm" class="space-y" onsubmit="event.preventDefault(); handleLogin();">
-                        <div>
-                            <label>Mobile Number</label>
-                            <input type="tel" id="loginMobile" placeholder="Enter 10-digit mobile number" required>
-                        </div>
-                        <div>
-                            <label>Password</label>
-                            <input type="password" id="loginPassword" placeholder="••••••••" required>
-                        </div>
-                        <div style="font-size: 14px; display: flex; align-items: center; gap: 8px;">
-                            <input id="loginStayLogged" type="checkbox" checked style="width: auto;">
-                            <span style="color: #4b5563;">Keep me logged in</span>
-                        </div>
-                        <button type="submit" class="btn-blue w-full">Sign In</button>
-                    </form>
-                    <div class="text-center" style="font-size: 14px; color: #6b7280; margin-top: 10px;">
-                        New to the system? 
-                        <button type="button" onclick="togglePanels('register')" class="link-btn">Register Account</button>
-                    </div>
-                </div>
-
-                <div id="registerPanel" class="space-y" style="display: none;">
-                    <div class="text-center">
-                        <h2 style="margin: 0; font-size: 20px;">Create Staff Profile</h2>
-                        <p style="color: #6b7280; font-size: 12px; margin: 5px 0 0 0;">Fill in details to request quality floor access.</p>
-                    </div>
-                    <form id="registerForm" class="space-y" onsubmit="event.preventDefault(); handleRegistration();">
-                        <div>
-                            <label>Full Name</label>
-                            <input type="text" id="regName" placeholder="John Doe" required>
-                        </div>
-                        <div class="grid">
-                            <div>
-                                <label>Designation</label>
-                                <select id="regDesignation" required>
-                                    <option value="">Select</option>
-                                    <option value="QC">QC</option>
-                                    <option value="QA">QA</option>
-                                    <option value="QAM">QAM</option>
-                                    <option value="Q head">Q head</option>
-                                    <option value="GM">GM</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>Section</label>
-                                <select id="regSection" required>
-                                    <option value="">Select</option>
-                                    <option value="Fabric">Fabric</option>
-                                    <option value="Cutting">Cutting</option>
-                                    <option value="Pre Production">Pre Production</option>
-                                    <option value="Sewing">Sewing</option>
-                                    <option value="Washing">Washing</option>
-                                    <option value="Finishing">Finishing</option>
-                                    <option value="Audit">Audit</option>
-                                    <option value="Management">Management</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div>
-                            <label>Mobile Number</label>
-                            <input type="tel" id="regMobile" placeholder="10-digit mobile number" required>
-                        </div>
-                        <div>
-                            <label>Password</label>
-                            <input type="password" id="regPassword" placeholder="Minimum 6 characters" required>
-                        </div>
-                        <div>
-                            <label>Confirm Password</label>
-                            <input type="password" id="regConfirmPassword" placeholder="Repeat password" required>
-                        </div>
-                        <button type="submit" class="btn-green w-full">Register Account</button>
-                    </form>
-                    <div class="text-center" style="font-size: 14px; color: #6b7280; margin-top: 10px;">
-                        Already registered? 
-                        <button type="button" onclick="togglePanels('login')" class="link-btn">Back to Login</button>
-                    </div>
-                </div>
-            </div>
-        </main>
-        <footer>Quality Production Suite &copy; 2026</footer>
-    </div>
-
-    <div id="homeScreen">
-        <header class="dashboard-header">
-            <div class="header-left">
-                <button type="button" class="burger-btn" onclick="openNavDrawer()">
-                    <div class="burger-bar"></div>
-                    <div class="burger-bar"></div>
-                    <div class="burger-bar"></div>
-                </button>
-                <h2 class="dashboard-title">Quality Assurance Dashboard</h2>
-            </div>
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span id="userBadgeDisplay" style="font-size: 12px; color: #93c5fd; font-weight: bold; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px;"></span>
-                <button type="button" class="logout-link-btn" onclick="handleLogout()">Sign Out</button>
-            </div>
-        </header>
-
-        <div id="drawerOverlay" class="drawer-overlay" onclick="closeNavDrawer()"></div>
-        <div id="sideDrawer" class="side-drawer">
-            <div class="drawer-header">
-                <h3>Navigation Menu</h3>
-                <button type="button" class="close-drawer-btn" onclick="closeNavDrawer()">&times;</button>
-            </div>
-            <nav>
-                <ul class="drawer-menu-list">
-                    <li class="drawer-menu-item"><a href="#" class="drawer-menu-link" onclick="handleMenuClick('New style')">1) New style</a></li>
-                    <li class="drawer-menu-item"><a href="#" class="drawer-menu-link" onclick="handleMenuClick('Production flow')">2) Production flow</a></li>
-                    <li class="drawer-menu-item"><a href="#" class="drawer-menu-link" onclick="handleMenuClick('Cutting report')">3) Cutting report</a></li>
-                    <li class="drawer-menu-item"><a href="#" class="drawer-menu-link" onclick="handleMenuClick('Sewing report')">4) Sewing report</a></li>
-                    <li class="drawer-menu-item"><a href="#" class="drawer-menu-link" onclick="handleMenuClick('Finishing report')">5) Finishing report</a></li>
-                    <li class="drawer-menu-item"><a href="#" class="drawer-menu-link" onclick="handleMenuClick('FSA audit')">6) FSA audit</a></li>
-                    <li class="drawer-menu-item"><a href="#" class="drawer-menu-link" onclick="handleMenuClick('Inline and final inspection')">7) Inline and final inspection</a></li>
-                    <li class="drawer-menu-item"><a href="#" class="drawer-menu-link" onclick="handleMenuClick('Quality analysis')">8) Quality analysis</a></li>
-                    <li class="drawer-menu-item"><a href="#" class="drawer-menu-link" onclick="handleMenuClick('Data bank')">9) Data bank</a></li>
-                </ul>
-            </nav>
+    <div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div class="bg-white rounded-xl shadow-xs p-6 mb-6 border border-slate-200">
+            <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                Daily Quality Inspection Log (AQL 2.5)
+            </h1>
         </div>
 
-        <main class="dashboard-content" id="dashboardWorkspace">
-            <div class="welcome-card" style="background: white; padding: 24px; border-radius: 12px; border: 1px solid #e5e7eb;">
-                <h3 style="margin-top: 0; color: #1e3a8a; font-size: 22px;">Welcome to the Floor Dashboard</h3>
-                <p style="color: #4b5563; line-height: 1.5; margin-bottom: 0;">Select an action option from the left burger menu drawer overlay panel to review styles or execute floor logging parameters.</p>
-            </div>
-        </main>
-
-        <footer style="margin-top: auto;">Quality Production Suite &copy; 2026</footer>
-    </div>
-
-    <div id="addStyleModal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-header">
-                <h4 id="modalBoxTitle">Add New Style Data Record</h4>
-                <button type="button" class="modal-close" onclick="closeStyleModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="newStyleForm" class="space-y" onsubmit="event.preventDefault(); commitStyleRecord();">
-                    <input type="hidden" id="editRecordIndex" value="">
-                    <div class="form-row-2">
-                        <div><label>SO #</label><input type="number" id="styleSO" required></div>
-                        <div><label>Color</label><input type="text" id="styleColor" required></div>
-                    </div>
-                    <div class="form-row-2">
-                        <div><label>Pilot</label><input type="text" id="stylePilot"></div>
-                        <div><label>Shrinkage</label><input type="text" id="styleShrinkage"></div>
-                    </div>
-                    <div style="background-color: #f0fdf4; padding: 10px; border: 1px dashed #bbf7d0; border-radius: 8px;">
-                        <label style="color: #166534;">Fabric Shade Card Camera</label>
-                        <input type="file" id="styleShadeFileSelector" accept="image/*" capture="environment">
-                    </div>
-                    <div class="form-row-2">
-                        <div><label>Plotter Recvd</label><input type="date" id="stylePlotter"></div>
-                        <div><label>Cut Date</label><input type="date" id="styleCut"></div>
-                    </div>
-                    <div><label>Issue Date</label><input type="date" id="styleIssue"></div>
-                    <div style="background-color: #f8fafc; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px;" class="space-y">
-                        <span class="sub-section-title">Pre Pilot Parameters</span>
-                        <div class="grid-3">
-                            <div>
-                                <label>File Status</label>
-                                <select id="stylePreFile">
-                                    <option value="">—</option><option value="ok">ok</option><option value="not ok">not ok</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>Sample Status</label>
-                                <select id="stylePreSample">
-                                    <option value="">—</option><option value="ok">ok</option><option value="not ok">not ok</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>GSS Status</label>
-                                <select id="stylePreGSS">
-                                    <option value="">—</option><option value="ok">ok</option><option value="not ok">not ok</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="background-color: #f8fafc; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px;">
-                        <label style="color: #2563eb;">Pre PM Report Camera</label>
-                        <input type="file" id="stylePrePMFileSelector" accept="image/*" capture="environment">
-                    </div>
-                    <div style="background-color: #fef2f2; padding: 12px; border: 1px solid #fee2e2; border-radius: 8px;" class="space-y">
-                        <span class="sub-section-title" style="color: #991b1b; border-color: #fca5a5;">Pilot Correction Parameters</span>
-                        <div class="form-row-2">
-                            <div><label>Correction Date</label><input type="date" id="styleCorrectionDate"></div>
-                            <div><label>Correction Proof</label><input type="file" id="styleCorrectionFileSelector" accept="image/*" capture="environment"></div>
-                        </div>
-                    </div>
-                    <div><label>Remarks</label><input type="text" id="styleRemarks"></div>
-                    <div id="uploadFeedbackLabel" style="font-size: 11px; color: #059669; font-style: italic; text-align: center;">⚡ Auto-compression active.</div>
-                    <button type="submit" class="btn-green w-full" style="margin-top: 5px;">Submit Style Record</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div id="fullReportModal" class="modal-overlay" style="z-index: 300;">
-        <div class="modal-box" style="max-width: 650px;">
-            <div class="modal-header" style="background-color: #111827;">
-                <h4>Detailed Inspection Quality Report</h4>
-                <button type="button" class="modal-close" onclick="closeReportModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="modal-report-content" class="space-y">
-                </div>
-        </div>
-    </div>
-
-    <div id="image-zoom-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9999; justify-content:center; align-items:center; cursor:zoom-out;" onclick="this.style.display='none'">
-        <img id="zoomed-image-element" src="" style="max-width:95%; max-height:95%; object-fit:contain; border-radius:4px; box-shadow: 0 0 20px rgba(255,255,255,0.2);">
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        const SUPABASE_URL = 'https://qjmbmritdbqtkitxaayu.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'sb_publishable_CtGzYhf4dI-QKgTO5Y9v7A_97GIWNW4';
-        
-        let databaseConnection = null;
-        let activeUserSession = null;
-        let stylesDataset = [];
-        let productionFlowData = [
-            { id: 1, department: "Cutting", process: "Fabric Relaxation & Spreading" },
-            { id: 2, department: "Cutting", process: "Marker Plotter Aligning" },
-            { id: 3, department: "Sewing", process: "Front Panel Pocket Attachment" },
-            { id: 4, department: "Finishing", process: "Steam Ironing & Pressing" }
-        ];
-
-        function togglePanels(panel) {
-            document.getElementById('loginPanel').style.display = panel === 'register' ? 'none' : 'block';
-            document.getElementById('registerPanel').style.display = panel === 'register' ? 'block' : 'none';
-        }
-
-        function openNavDrawer() {
-            document.getElementById('drawerOverlay').style.display = 'block';
-            document.getElementById('sideDrawer').style.left = '0px';
-        }
-
-        function closeNavDrawer() {
-            document.getElementById('drawerOverlay').style.display = 'none';
-            document.getElementById('sideDrawer').style.left = '-280px';
-        }
-
-        function handleMenuClick(menuOptionName) {
-            closeNavDrawer();
-            if (menuOptionName === 'New style') renderNewStyleWorkspace();
-            else if (menuOptionName === 'Production flow') renderProductionFlowWorkspace();
-            else if (menuOptionName === 'Cutting report') renderCuttingReportWorkspace();
-            else if (menuOptionName === 'Sewing report') renderSewingReportWorkspace();
-            else if (menuOptionName === 'Finishing report') renderFinishingReportWorkspace();
-            else if (menuOptionName === 'FSA audit') renderFSAAuditWorkspace();
-            else if (menuOptionName === 'Inline and final inspection') renderInspectionWorkspace();
-            else {
-                document.getElementById('dashboardWorkspace').innerHTML = `
-                    <div class="workspace-card">
-                        <h3>${menuOptionName} Workspace</h3>
-                        <p style="color: #4b5563;">Module for "${menuOptionName}" is ready for active tracking configurations.</p>
-                    </div>`;
-            }
-        }
-
-        // --- PAGE 3: PRODUCTION FLOW ---
-        function renderProductionFlowWorkspace() {
-            document.getElementById('dashboardWorkspace').innerHTML = `
-                <div class="workspace-card">
-                    <div class="workspace-title-bar"><h3>Production Flow Management</h3></div>
-                    <div style="background-color: #f8fafc; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 20px;">
-                        <div class="grid-3" style="grid-template-columns: 1fr 2fr auto;">
-                            <div>
-                                <label>Department</label>
-                                <select id="flowDeptInput">
-                                    <option value="Cutting">1) Cutting</option>
-                                    <option value="Sewing">2) Sewing</option>
-                                    <option value="Finishing">3) Finishing</option>
-                                </select>
-                            </div>
-                            <div><label>Process Name</label><input type="text" id="flowProcessInput" placeholder="e.g. Inseam Join"></div>
-                            <div style="display: flex; align-items: flex-end;"><button class="btn-blue" onclick="addProductionFlowRow()">Add Step</button></div>
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <table class="style-table" style="min-width: 100%;">
-                            <thead><tr><th>Department</th><th>Process</th><th>Action</th></tr></thead>
-                            <tbody id="productionFlowTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>`;
-            populateProductionFlowTable();
-        }
-
-        function populateProductionFlowTable() {
-            const tbody = document.getElementById('productionFlowTableBody');
-            if (!tbody) return; tbody.innerHTML = "";
-            ["Cutting", "Sewing", "Finishing"].forEach(dept => {
-                const processes = productionFlowData.filter(item => item.department === dept);
-                if (processes.length === 0) {
-                    tbody.innerHTML += `<tr><td class="dept-title-cell">${dept}</td><td style="text-align:left; padding-left:20px; color:#94a3b8; font-style:italic;">No custom processes configured</td><td>—</td></tr>`;
-                } else {
-                    processes.forEach((item, index) => {
-                        tbody.innerHTML += `<tr>
-                            ${index === 0 ? `<td rowspan="${processes.length}" class="dept-title-cell" style="vertical-align: top;">${dept}</td>` : ''}
-                            <td style="text-align: left; padding-left: 20px; font-weight: 500;">${item.process}</td>
-                            <td><button class="btn-red" style="padding:4px 8px; font-size:11px;" onclick="deleteProductionFlowRow(${item.id})">Remove</button></td>
-                        </tr>`;
-                    });
-                }
-            });
-        }
-
-        function addProductionFlowRow() {
-            const dept = document.getElementById('flowDeptInput').value;
-            const pStr = document.getElementById('flowProcessInput').value.trim();
-            if (!pStr) return alert("Please enter a valid process description name.");
-            productionFlowData.push({ id: Date.now(), department: dept, process: pStr });
-            document.getElementById('flowProcessInput').value = "";
-            populateProductionFlowTable();
-        }
-
-        function deleteProductionFlowRow(id) {
-            productionFlowData = productionFlowData.filter(item => item.id !== id);
-            populateProductionFlowTable();
-        }
-
-        function renderCuttingReportWorkspace() {
-            document.getElementById('dashboardWorkspace').innerHTML = `<div class="workspace-card"><h3>Cutting Report Workspace</h3></div>`;
-        }
-        function renderSewingReportWorkspace() {
-            document.getElementById('dashboardWorkspace').innerHTML = `<div class="workspace-card"><h3>Sewing Report Workspace</h3></div>`;
-        }
-        function renderFinishingReportWorkspace() {
-            document.getElementById('dashboardWorkspace').innerHTML = `<div class="workspace-card"><h3>Finishing Report Workspace</h3></div>`;
-        }
-        function renderFSAAuditWorkspace() {
-            document.getElementById('dashboardWorkspace').innerHTML = `<div class="workspace-card"><h3>FSA Audit Workspace</h3></div>`;
-        }
-
-        // --- PAGE 7: INLINE & FINAL INSPECTION ---
-        function renderInspectionWorkspace() {
-            const currentTodayDate = new Date().toISOString().split('T')[0];
-            document.getElementById('dashboardWorkspace').innerHTML = `
-                <div class="workspace-card">
-                    <div class="workspace-title-bar">
-                        <h3>Daily Quality Inspection Log (AQL 2.5)</h3>
-                    </div>
-                    
-                    <div id="critAlertBanner" class="critical-warning">
-                        ⚠️ CRITICAL DEFECT LOGGED: This inspection batch automatically FAILS standard shipment verification parameters!
-                    </div>
-
-                    <div class="inspection-box">
-                        <form id="dailyLineReportForm" class="space-y" onsubmit="event.preventDefault(); saveDailyReportToSupabase();">
-                            
-                            <div class="grid-4" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
-                                <div><label>Date</label><input type="date" id="inspDate" value="${currentTodayDate}"></div>
-                                <div><label>Unit Name / Line ID</label><input type="text" id="inspUnit" placeholder="e.g. Line 04" required></div>
-                                <div><label>SO #</label><input type="number" id="inspSO" placeholder="e.g. 11279" required></div>
-                                <div><label>Color</label><input type="text" id="inspColor" placeholder="e.g. Black" required></div>
-                            </div>
-
-                            <div class="grid-3" style="background: #eff6ff; padding: 12px; border-radius: 8px; border: 1px solid #bfdbfe;">
-                                <div>
-                                    <label style="color:#1e40af;">Daily Output Qty</label>
-                                    <input type="number" id="inspOutputQty" placeholder="Enter total pieces" oninput="calculateAQLSampling()" required>
-                                </div>
-                                <div>
-                                    <label style="color:#1e40af;">Qty Inspected (Sample Size)</label>
-                                    <input type="number" id="inspSampleQty" style="background:#e2e8f0; font-weight:bold;" readonly>
-                                </div>
-                                <div>
-                                    <label style="color:#b91c1c;">Manual DHU entry (%)</label>
-                                    <input type="number" step="0.01" id="inspDHU" placeholder="Type DHU % manually" required>
-                                </div>
-                            </div>
-
-                            <div style="background: #f8fafc; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; font-weight: 600; color: #475569;">
-                                System Standard AQL 2.5 Max Allowed Limits: 
-                                <span style="margin-left:15px; color:#1e3a8a;">Major Max: <span id="lblMaxMajor">0</span></span> | 
-                                <span style="margin-left:10px; color:#1e3a8a;">Minor Max: <span id="lblMaxMinor">0</span></span> | 
-                                <span style="margin-left:10px; color:#b91c1c;">Critical Max: <span id="lblMaxCritical" style="color:#ef4444; font-weight:bold;">0</span></span>
-                            </div>
-
-                            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:15px;">
-                                <div class="qc-section-card">
-                                    <label style="color:#c2410c;">Major Defects Found</label>
-                                    <input type="number" id="countMajor" value="0" min="0" style="margin-bottom:8px;">
-                                    <label style="font-size:10px; color:#64748b;">📸 Major Photo Proof</label>
-                                    <input type="file" id="imgMajorFile" accept="image/*" capture="environment" style="padding:2px; font-size:11px;">
-                                </div>
-                                <div class="qc-section-card">
-                                    <label style="color:#854d0e;">Minor Defects Found</label>
-                                    <input type="number" id="countMinor" value="0" min="0" style="margin-bottom:8px;">
-                                    <label style="font-size:10px; color:#64748b;">📸 Minor Photo Proof</label>
-                                    <input type="file" id="imgMinorFile" accept="image/*" capture="environment" style="padding:2px; font-size:11px;">
-                                </div>
-                                <div class="qc-section-card" style="border-color:#fca5a5; background:#fff5f5;">
-                                    <label style="color:#991b1b; font-weight:bold;">Critical Defects Found</label>
-                                    <input type="number" id="countCritical" value="0" min="0" style="margin-bottom:8px; border-color:#fca5a5;" oninput="evaluateCriticalLimit()">
-                                    <label style="font-size:10px; color:#64748b;">📸 Critical Photo Proof</label>
-                                    <input type="file" id="imgCriticalFile" accept="image/*" capture="environment" style="padding:2px; font-size:11px;">
-                                </div>
-                                <div class="qc-section-card">
-                                    <label style="color:#334155;">Un-trimmed Threads Found</label>
-                                    <input type="number" id="countThreads" value="0" min="0" style="margin-bottom:8px;">
-                                    <label style="font-size:10px; color:#64748b;">📸 Thread Photo Proof</label>
-                                    <input type="file" id="imgThreadFile" accept="image/*" capture="environment" style="padding:2px; font-size:11px;">
-                                </div>
-                            </div>
-
-                            <div>
-                                <label>QC Alphanumeric Remarks</label>
-                                <textarea id="inspRemarks" rows="2" placeholder="Describe layout observation notes..."></textarea>
-                            </div>
-
-                            <button type="submit" class="btn-green w-full" style="font-size:16px; padding:14px;">Save Daily Quality Report</button>
-                        </form>
-                    </div>
-
-                    <div id="reports-dashboard-section" class="workspace-card mt-4">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 15px;">
-                            <h3 style="margin:0; font-size:18px; color:#1e3a8a;">📋 Submitted Quality Reports Log Log</h3>
-                            <button type="button" class="btn-blue" style="padding: 6px 12px; font-size:12px;" onclick="fetchReportsFromSupabase()">🔄 Refresh Log</button>
-                        </div>
-                        <div class="table-container">
-                            <table class="style-table" style="min-width:1000px;">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Line ID</th>
-                                        <th>SO #</th>
-                                        <th>Color</th>
-                                        <th>DHU %</th>
-                                        <th>Status</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="reports-list-body">
-                                    <tr><td colspan="7" style="padding:15px; color:#64748b; font-style:italic;">Click Refresh Log to sync historical production entries.</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>`;
-            fetchReportsFromSupabase();
-        }
-
-        function evaluateCriticalLimit() {
-            const count = parseInt(document.getElementById('countCritical').value) || 0;
-            document.getElementById('critAlertBanner').style.display = count > 0 ? 'block' : 'none';
-        }
-
-        function calculateAQLSampling() {
-            const outputQty = parseInt(document.getElementById('inspOutputQty').value) || 0;
-            let sampleSize = 0;
-            let maxAllowedMajorMinor = 0;
-
-            if (outputQty <= 0) {
-                sampleSize = 0; maxAllowedMajorMinor = 0;
-            } else if (outputQty <= 8) {
-                sampleSize = 2; maxAllowedMajorMinor = 0;
-            } else if (outputQty <= 15) {
-                sampleSize = 3; maxAllowedMajorMinor = 0;
-            } else if (outputQty <= 25) {
-                sampleSize = 5; maxAllowedMajorMinor = 0;
-            } else if (outputQty <= 50) {
-                sampleSize = 8; maxAllowedMajorMinor = 0;
-            } else if (outputQty <= 90) {
-                sampleSize = 13; maxAllowedMajorMinor = 1;
-            } else if (outputQty <= 150) {
-                sampleSize = 20; maxAllowedMajorMinor = 1;
-            } else if (outputQty <= 280) {
-                sampleSize = 32; maxAllowedMajorMinor = 2;
-            } else if (outputQty <= 500) {
-                sampleSize = 50; maxAllowedMajorMinor = 3;
-            } else if (outputQty <= 1200) {
-                sampleSize = 80; maxAllowedMajorMinor = 5;
-            } else if (outputQty <= 3200) {
-                sampleSize = 125; maxAllowedMajorMinor = 7;
-            } else if (outputQty <= 10000) {
-                sampleSize = 200; maxAllowedMajorMinor = 10;
-            } else {
-                sampleSize = 315; maxAllowedMajorMinor = 14;
-            }
-
-            document.getElementById('inspSampleQty').value = sampleSize;
-            document.getElementById('lblMaxMajor').innerText = maxAllowedMajorMinor;
-            document.getElementById('lblMaxMinor').innerText = Math.round(maxAllowedMajorMinor * 1.5) || maxAllowedMajorMinor;
-            document.getElementById('lblMaxCritical').innerText = 0; // Locked Critical Count at Zero
-        }
-
-        // --- SUBMIT REPORT CONFIGURATION ---
-        async function saveDailyReportToSupabase() {
-            initSupabase();
-            if(!databaseConnection) return alert("Database initialization error context missing.");
-
-            const reportPayload = {
-                date: document.getElementById('inspDate').value,
-                line_id: document.getElementById('inspUnit').value,
-                so_number: document.getElementById('inspSO').value,
-                color: document.getElementById('inspColor').value,
-                daily_output_qty: parseInt(document.getElementById('inspOutputQty').value) || 0,
-                qty_inspected: parseInt(document.getElementById('inspSampleQty').value) || 0,
-                manual_dhu_entry: parseFloat(document.getElementById('inspDHU').value) || 0,
-                major_defects: parseInt(document.getElementById('countMajor').value) || 0,
-                minor_defects: parseInt(document.getElementById('countMinor').value) || 0,
-                critical_defects: parseInt(document.getElementById('countCritical').value) || 0,
-                untrimmed_threads: parseInt(document.getElementById('countThreads').value) || 0,
-                remarks: document.getElementById('inspRemarks').value
-            };
-
-            const { data, error } = await databaseConnection.from('daily_quality_reports').insert([reportPayload]).select();
-            if(error) {
-                alert("🔴 SQL Execution Error: " + error.message);
-            } else {
-                alert("🟢 Daily Quality Report saved into cloud node safely!");
-                document.getElementById('dailyLineReportForm').reset();
-                evaluateCriticalLimit();
-                fetchReportsFromSupabase();
-            }
-        }
-
-        // --- FETCH AND DISPLAY REVIEWS LOOP ---
-        async function fetchReportsFromSupabase() {
-            initSupabase();
-            const tbody = document.getElementById('reports-list-body');
-            if(!tbody) return;
-            
-            tbody.innerHTML = `<tr><td colspan="7" style="padding:15px; color:#2563eb;">Syncing live ledger lines...</td></tr>`;
-
-            const { data, error } = await databaseConnection
-                .from('daily_quality_reports')
-                .select('*')
-                .order('date', { ascending: false });
-
-            if(error) {
-                tbody.innerHTML = `<tr><td colspan="7" style="padding:15px; color:#ef4444;">Sync failed: ${error.message}</td></tr>`;
-                return;
-            }
-
-            if(!data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="padding:15px; color:#64748b; font-style:italic;">No historical quality records found in Supabase table.</td></tr>`;
-                return;
-            }
-
-            let rowsHtml = "";
-            window.activeInspectionRecords = data; // Cache globally to pull safely later
-            
-            data.forEach((report, index) => {
-                const statusBadge = report.critical_defects > 0 
-                    ? `<span class="badge bg-danger">FAIL</span>` 
-                    : `<span class="badge bg-success">PASS</span>`;
-                
-                rowsHtml += `<tr>
-                    <td><strong>${report.date}</strong></td>
-                    <td>${report.line_id}</td>
-                    <td>${report.so_number || '—'}</td>
-                    <td>${report.color || '—'}</td>
-                    <td style="font-weight:bold; color:#b91c1c;">${report.manual_dhu_entry}%</td>
-                    <td>${statusBadge}</td>
-                    <td><button type="button" class="edit-action-btn" style="background-color:#1e3a8a;" onclick="launchDetailedReportModal(${index})">🔍 View Full Report</button></td>
-                </tr>`;
-            });
-            tbody.innerHTML = rowsHtml;
-        }
-
-        // --- SHOW COMPREHENSIVE PRESENTATION POPUP ---
-        function launchDetailedReportModal(cachedIndex) {
-            const report = window.activeInspectionRecords[cachedIndex];
-            const contentBox = document.getElementById('modal-report-content');
-            
-            contentBox.innerHTML = `
-                <div class="report-grid-details" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
-                    <div><h6><strong>Inspection Date:</strong> ${report.date}</h6></div>
-                    <div><h6><strong>Unit / Line ID:</strong> ${report.line_id}</h6></div>
-                    <div><h6><strong>Sales Order (SO #):</strong> ${report.so_number || '—'}</h6></div>
-                    <div><h6><strong>Colorway Section:</strong> ${report.color || '—'}</h6></div>
-                </div>
-                <div class="grid-4" style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center; margin-bottom:15px;">
-                    <div><span style="font-size:11px; font-weight:bold; color:#475569;">MAJOR</span><p class="report-counter-value text-warning">${report.major_defects}</p></div>
-                    <div><span style="font-size:11px; font-weight:bold; color:#475569;">MINOR</span><p class="report-counter-value text-primary">${report.minor_defects}</p></div>
-                    <div><span style="font-size:11px; font-weight:bold; color:#475569;">CRITICAL</span><p class="report-counter-value text-danger">${report.critical_defects}</p></div>
-                    <div><span style="font-size:11px; font-weight:bold; color:#475569;">THREADS</span><p class="report-counter-value">${report.untrimmed_threads}</p></div>
-                </div>
-                <div style="margin-bottom:15px;">
-                    <label>QC Floor Observations</label>
-                    <p style="background:#f3f4f6; padding:10px; border-radius:6px; font-size:13px; margin:4px 0 0 0; line-height:1.4;">${report.remarks || '<em>No specific layout remarks added.</em>'}</p>
+        <form id="qualityForm" class="bg-white rounded-xl shadow-xs p-6 mb-6 border border-slate-200 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Date</label>
+                    <input type="date" id="reportDate" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500">
                 </div>
                 <div>
-                    <label>📸 Attached Quality Defect Proofs (Tap to Zoom)</label>
-                    <div class="d-flex flex-wrap gap-2" style="margin-top:5px; display:flex;">
-                        <img src="https://images.unsplash.com/photo-1555529669-26f9d103abdd?w=150" class="img-thumbnail-card" onclick="triggerFullScreenZoom(this.src)">
-                        <img src="https://images.unsplash.com/photo-1541535650810-10d26f5c2ab3?w=150" class="img-thumbnail-card" onclick="triggerFullScreenZoom(this.src)">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Unit Name / Line ID</label>
+                    <input type="text" id="lineId" required placeholder="e.g. Line 04" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">SO #</label>
+                    <input type="text" id="soNum" required placeholder="e.g. 11279" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Color</label>
+                    <input type="text" id="color" required placeholder="e.g. Black" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-blue-700 mb-1">Daily Output Qty</label>
+                    <input type="number" id="outputQty" required placeholder="Enter total pieces" class="w-full bg-white rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-blue-700 mb-1">Qty Inspected (Sample Size)</label>
+                    <input type="number" id="inspectedQty" readonly class="w-full bg-slate-200 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 focus:outline-hidden">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-rose-700 mb-1">Manual DHU Entry (%)</label>
+                    <input type="text" id="dhuPercent" readonly class="w-full bg-slate-200 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 focus:outline-hidden">
+                </div>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-xs text-blue-800 font-medium">
+                System Standard AQL 2.5 Max Allowed Limits: &nbsp; 
+                <span class="font-bold text-blue-900">Major Max: <span id="maxMajor">0</span></span> &nbsp;|&nbsp; 
+                <span class="font-bold text-blue-900">Minor Max: <span id="maxMinor">0</span></span> &nbsp;|&nbsp; 
+                <span class="font-bold text-rose-700">Critical Max: <span id="maxCritical">0</span></span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-amber-50/50 border border-amber-200 rounded-xl p-4 space-y-3">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-amber-800">Major Defects Found</label>
+                    <input type="number" id="majorCount" value="0" min="0" class="w-full bg-white rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">📸 Major Photo Proof</label>
+                        <input type="file" id="majorFile" accept="image/*" class="w-full text-xs file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200">
                     </div>
-                </div>`;
+                </div>
+
+                <div class="bg-amber-50/50 border border-amber-200 rounded-xl p-4 space-y-3">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-amber-800">Minor Defects Found</label>
+                    <input type="number" id="minorCount" value="0" min="0" class="w-full bg-white rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">📸 Minor Photo Proof</label>
+                        <input type="file" id="minorFile" accept="image/*" class="w-full text-xs file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200">
+                    </div>
+                </div>
+
+                <div class="bg-rose-50/50 border border-rose-200 rounded-xl p-4 space-y-3">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-rose-800">Critical Defects Found</label>
+                    <input type="number" id="criticalCount" value="0" min="0" class="w-full bg-white rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">📸 Critical Photo Proof</label>
+                        <input type="file" id="criticalFile" accept="image/*" class="w-full text-xs file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-rose-100 file:text-rose-800 hover:file:bg-rose-200">
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">Un-trimmed Threads Found</label>
+                    <input type="number" id="threadCount" value="0" min="0" class="w-full bg-white rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">📸 Thread Photo Proof</label>
+                        <input type="file" id="threadFile" accept="image/*" class="w-full text-xs file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300">
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">QC Alphanumeric Remarks</label>
+                <textarea id="remarks" rows="2" placeholder="Describe layout observation notes..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"></textarea>
+            </div>
+
+            <button type="submit" id="submitBtn" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition-colors text-sm cursor-pointer flex items-center justify-center gap-2">
+                Save Daily Quality Report
+            </button>
+        </form>
+
+        <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    📋 Submitted Quality Reports Log
+                </h2>
+                <button onclick="fetchReports()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 transition-colors cursor-pointer">
+                    🔄 Refresh Log
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 uppercase tracking-wider text-[11px] font-semibold border-b border-slate-200">
+                            <th class="p-3">Date</th>
+                            <th class="p-3">Line ID</th>
+                            <th class="p-3">SO #</th>
+                            <th class="p-3">Color</th>
+                            <th class="p-3 text-right">Output</th>
+                            <th class="p-3 text-right">DHU %</th>
+                            <th class="p-3 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportLogBody" class="divide-y divide-slate-100 text-slate-700">
+                        <tr>
+                            <td colspan="7" class="p-4 text-center text-slate-400 text-xs">Loading reports...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="reportModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-slate-900/40 backdrop-blur-xs"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-xl shadow-xl z-50 overflow-y-auto max-h-[90vh]">
+            <div class="p-6 space-y-6">
+                <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+                    <h3 class="text-xl font-bold text-slate-900">Detailed Inspection Quality Report</h3>
+                    <button onclick="toggleModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold cursor-pointer">&times;</button>
+                </div>
+                
+                <div id="modalContent" class="space-y-4 text-sm">
+                    </div>
+
+                <div class="flex justify-end pt-2">
+                    <button onclick="toggleModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-lg text-xs cursor-pointer border border-slate-200">
+                        Close Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURATION: Live project URL and API keys loaded successfully
+        const SUPABASE_URL = "https://qjmbmritdbqtkitxaayu.supabase.co"; 
+        const SUPABASE_ANON_KEY = "sb_publishable_CtGzYhf4dI-QKgTO5Y9v7A_97GIWNW4";
+
+        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Auto Setup Date Field to Current Date
+        document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+
+        // AQL 2.5 Calculations
+        const getSampleSizeAndLimits = (output) => {
+            if (output <= 0) return { size: 0, major: 0, minor: 0, critical: 0 };
+            if (output <= 8) return { size: 2, major: 0, minor: 0, critical: 0 };
+            if (output <= 15) return { size: 3, major: 0, minor: 0, critical: 0 };
+            if (output <= 25) return { size: 5, major: 0, minor: 0, critical: 0 };
+            if (output <= 50) return { size: 8, major: 0, minor: 0, critical: 0 };
+            if (output <= 90) return { size: 13, major: 1, minor: 1, critical: 0 };
+            if (output <= 150) return { size: 20, major: 1, minor: 1, critical: 0 };
+            if (output <= 280) return { size: 32, major: 2, minor: 2, critical: 0 };
+            if (output <= 500) return { size: 50, major: 3, minor: 3, critical: 0 };
+            if (output <= 1200) return { size: 80, major: 5, minor: 5, critical: 0 };
+            if (output <= 3200) return { size: 125, major: 7, minor: 7, critical: 1 };
+            if (output <= 10000) return { size: 200, major: 10, minor: 10, critical: 1 };
+            return { size: 315, major: 14, minor: 14, critical: 2 };
+        };
+
+        const outputInput = document.getElementById('outputQty');
+        const majorInput = document.getElementById('majorCount');
+        const minorInput = document.getElementById('minorCount');
+        const criticalInput = document.getElementById('criticalCount');
+        const threadInput = document.getElementById('threadCount');
+
+        function recalculateMetrics() {
+            const output = parseInt(outputInput.value) || 0;
+            const metrics = getSampleSizeAndLimits(output);
             
-            document.getElementById('fullReportModal').style.display = 'flex';
+            document.getElementById('inspectedQty').value = metrics.size;
+            document.getElementById('maxMajor').innerText = metrics.major;
+            document.getElementById('maxMinor').innerText = metrics.minor;
+            document.getElementById('maxCritical').innerText = metrics.critical;
+
+            const totalDefects = (parseInt(majorInput.value) || 0) + (parseInt(minorInput.value) || 0) + (parseInt(criticalInput.value) || 0) + (parseInt(threadInput.value) || 0);
+            const dhu = metrics.size > 0 ? ((totalDefects / metrics.size) * 100).toFixed(2) : "0.00";
+            document.getElementById('dhuPercent').value = dhu + "%";
         }
 
-        function triggerFullScreenZoom(imgSrcUrl) {
-            document.getElementById('zoomed-image-element').src = imgSrcUrl;
-            document.getElementById('image-zoom-overlay').style.display = 'flex';
+        [outputInput, majorInput, minorInput, criticalInput, threadInput].forEach(el => el.addEventListener('input', recalculateMetrics));
+
+        // Upload Image Helper function
+        async function uploadImageFile(fileInputId, folderName) {
+            const fileInput = document.getElementById(fileInputId);
+            if (!fileInput || fileInput.files.length === 0) return null;
+            
+            const file = fileInput.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${folderName}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { data, error } = await supabase.storage
+                .from('quality_proofs')
+                .upload(filePath, file);
+
+            if (error) {
+                console.error("Storage upload error:", error);
+                return null;
+            }
+
+            const { data: publicUrlData } = supabase.storage
+                .from('quality_proofs')
+                .getPublicUrl(filePath);
+
+            return publicUrlData.publicUrl;
         }
 
-        function closeReportModal() {
-            document.getElementById('fullReportModal').style.display = 'none';
-        }
+        // Form Submission Logic
+        document.getElementById('qualityForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = "Processing & Uploading Proofs...";
 
-        // --- PAGE 1: NEW STYLE MATRIX LOGIC ---
-        function renderNewStyleWorkspace() {
-            document.getElementById('dashboardWorkspace').innerHTML = `
-                <div class="workspace-card">
-                    <div class="workspace-title-bar"><h3>Pre-Pilot Processing Status Log</h3></div>
-                    <div class="table-toolbar">
-                        <input type="text" id="tableSearchField" class="search-input" placeholder="🔍 Search by SO #..." oninput="evaluateTableFilters()">
-                        <button class="add-btn" onclick="openStyleModal()">➕ Add New Style</button>
-                    </div>
-                    <div class="table-container">
-                        <table class="style-table">
-                            <thead>
-                                <tr>
-                                    <th rowspan="2">SO #</th><th rowspan="2">Color</th><th rowspan="2">Pilot</th><th rowspan="2">Shade</th><th rowspan="2">Shrinkage</th><th rowspan="2">Plotter Recvd</th><th rowspan="2">Cut</th><th rowspan="2">Issue</th>
-                                    <th colspan="4">Pre Pilot</th><th colspan="2">Pilot Correction</th><th rowspan="2">Remarks</th><th rowspan="2">Actions</th>
-                                </tr>
-                                <tr><th>File</th><th>Sample</th><th>GSS</th><th>Pre PM</th><th>Date</th><th>Image</th></tr>
-                            </thead>
-                            <tbody id="styleTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>`;
-            populateTableRows(stylesDataset);
-        }
+            try {
+                // 1. Upload images if they exist
+                const majorUrl = await uploadImageFile('majorFile', 'major');
+                const minorUrl = await uploadImageFile('minorFile', 'minor');
+                const criticalUrl = await uploadImageFile('criticalFile', 'critical');
+                const threadUrl = await uploadImageFile('threadFile', 'thread');
 
-        function populateTableRows(dataset) {
-            const tbody = document.getElementById('styleTableBody'); if(!tbody) return;
-            if(dataset.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="16" style="padding: 20px; color: #64748b; font-style: italic;">No styles registered. Click 'Add New Style' to insert a record.</td></tr>`;
+                // 2. Submit record metadata to DB table
+                const reportPayload = {
+                    report_date: document.getElementById('reportDate').value,
+                    line_id: document.getElementById('lineId').value,
+                    so_number: document.getElementById('soNum').value,
+                    color: document.getElementById('color').value,
+                    daily_output_qty: parseInt(outputInput.value) || 0,
+                    qty_inspected: parseInt(document.getElementById('inspectedQty').value) || 0,
+                    major_defects: parseInt(majorInput.value) || 0,
+                    minor_defects: parseInt(minorInput.value) || 0,
+                    critical_defects: parseInt(criticalCount.value) || 0,
+                    untrimmed_threads: parseInt(threadInput.value) || 0,
+                    dhu_percentage: parseFloat(document.getElementById('dhuPercent').value) || 0,
+                    remarks: document.getElementById('remarks').value,
+                    major_photo_url: majorUrl,
+                    minor_photo_url: minorUrl,
+                    critical_photo_url: criticalUrl,
+                    thread_photo_url: threadUrl
+                };
+
+                const { error } = await supabase.from('daily_quality_reports').insert([reportPayload]);
+
+                if (error) throw error;
+
+                alert("Inspection quality report and proof images saved successfully!");
+                document.getElementById('qualityForm').reset();
+                document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+                recalculateMetrics();
+                fetchReports();
+            } catch (err) {
+                alert("SQL Execution Error: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Save Daily Quality Report";
+            }
+        });
+
+        // Load and Fetch Logs
+        async function fetchReports() {
+            const body = document.getElementById('reportLogBody');
+            body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">Fetching latest log records...</td></tr>`;
+
+            const { data, error } = await supabase
+                .from('daily_quality_reports')
+                .select('*')
+                .order('report_date', { ascending: false });
+
+            if (error) {
+                body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-rose-500">Failed to load logs: ${error.message}</td></tr>`;
                 return;
             }
-            const canUserEdit = activeUserSession && ['Q head','GM','QC','QA'].includes(activeUserSession.designation);
-            let rowsHtml = "";
-            dataset.forEach((item, index) => {
-                const fBadge = item.pre_file ? (item.pre_file === 'ok' ? `<span class="status-ok">ok</span>` : `<span class="status-not-ok">not ok</span>`) : '—';
-                const sBadge = item.pre_sample ? (item.pre_sample === 'ok' ? `<span class="status-ok">ok</span>` : `<span class="status-not-ok">not ok</span>`) : '—';
-                const gBadge = item.pre_gss ? (item.pre_gss === 'ok' ? `<span class="status-ok">ok</span>` : `<span class="status-not-ok">not ok</span>`) : '—';
-                const sCell = item.shade_img ? `<a href="${item.shade_img}" target="_blank" class="cell-link">🖼️ View Shade</a>` : `<span>—</span>`;
-                const pmCell = item.pre_pm_img ? `<a href="${item.pre_pm_img}" target="_blank" class="cell-link">📸 View PM</a>` : `<span>—</span>`;
-                const cImgCell = item.correction_img ? `<a href="${item.correction_img}" target="_blank" class="cell-link">🖼️ View Proof</a>` : `<span>—</span>`;
-                const aCell = canUserEdit ? `<button class="edit-action-btn" onclick="openEditStyleModal(${index})">✍️ Edit</button>` : `<span>Locked</span>`;
-                rowsHtml += `<tr>
-                    <td style="font-weight:bold; color:#1e3a8a;">${item.so}</td><td>${item.color || '—'}</td><td>${item.pilot || '—'}</td><td>${sCell}</td><td>${item.shrinkage || '—'}</td><td>${item.plotter || '—'}</td><td>${item.cut || '—'}</td><td>${item.issue || '—'}</td>
-                    <td>${fBadge}</td><td>${sBadge}</td><td>${gBadge}</td><td>${pmCell}</td><td>${item.correction_date || '—'}</td><td>${cImgCell}</td><td>${item.remarks || ''}</td><td>${aCell}</td>
-                </tr>`;
+
+            if (!data || data.length === 0) {
+                body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">No inspection reports recorded yet.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = "";
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="p-3 font-medium text-slate-900">${row.report_date}</td>
+                    <td class="p-3">${row.line_id}</td>
+                    <td class="p-3">${row.so_number}</td>
+                    <td class="p-3">${row.color}</td>
+                    <td class="p-3 text-right">${row.daily_output_qty}</td>
+                    <td class="p-3 text-right font-bold text-slate-900">${row.dhu_percentage}%</td>
+                    <td class="p-3 text-center">
+                        <button onclick='viewReportDetails(${JSON.stringify(row)})' class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold px-2.5 py-1 rounded-md text-xs cursor-pointer border border-emerald-200">
+                            View Report
+                        </button>
+                    </td>
+                `;
+                body.appendChild(tr);
             });
-            tbody.innerHTML = rowsHtml;
         }
 
-        function evaluateTableFilters() {
-            const val = document.getElementById('tableSearchField').value.trim();
-            populateTableRows(val ? stylesDataset.filter(item => item.so.toString().includes(val)) : stylesDataset);
-        }
-
-        function openStyleModal() {
-            document.getElementById('modalBoxTitle').innerText = "Add New Style Data Record";
-            document.getElementById('editRecordIndex').value = "";
-            document.getElementById('styleSO').disabled = false;
-            document.getElementById('addStyleModal').style.display = 'flex';
-        }
-
-        function openEditStyleModal(index) {
-            const rec = stylesDataset[index];
-            document.getElementById('modalBoxTitle').innerText = `Modify Style Parameters [SO# ${rec.so}]`;
-            document.getElementById('editRecordIndex').value = index;
-            document.getElementById('styleSO').value = rec.so; document.getElementById('styleSO').disabled = true;
-            document.getElementById('styleColor').value = rec.color || "";
-            document.getElementById('stylePilot').value = rec.pilot || "";
-            document.getElementById('styleShrinkage').value = rec.shrinkage || "";
-            document.getElementById('stylePlotter').value = rec.plotter || "";
-            document.getElementById('styleCut').value = rec.cut || "";
-            document.getElementById('styleIssue').value = rec.issue || "";
-            document.getElementById('stylePreFile').value = rec.pre_file || "";
-            document.getElementById('stylePreSample').value = rec.pre_sample || "";
-            document.getElementById('stylePreGSS').value = rec.pre_gss || "";
-            document.getElementById('styleCorrectionDate').value = rec.correction_date || "";
-            document.getElementById('styleRemarks').value = rec.remarks || "";
-            document.getElementById('addStyleModal').style.display = 'flex';
-        }
-
-        function closeStyleModal() {
-            document.getElementById('addStyleModal').style.display = 'none';
-            document.getElementById('newStyleForm').reset();
-        }
-
-        async function commitStyleRecord() {
-            const idx = document.getElementById('editRecordIndex').value;
-            const styleRecordObj = {
-                so: parseInt(document.getElementById('styleSO').value),
-                color: document.getElementById('styleColor').value,
-                pilot: document.getElementById('stylePilot').value,
-                shrinkage: document.getElementById('styleShrinkage').value,
-                plotter: document.getElementById('stylePlotter').value,
-                cut: document.getElementById('styleCut').value,
-                issue: document.getElementById('styleIssue').value,
-                pre_file: document.getElementById('stylePreFile').value,
-                pre_sample: document.getElementById('stylePreSample').value,
-                pre_gss: document.getElementById('stylePreGSS').value,
-                correction_date: document.getElementById('styleCorrectionDate').value,
-                remarks: document.getElementById('styleRemarks').value
+        // Modal View Displaying Live Saved Photos
+        function viewReportDetails(row) {
+            const content = document.getElementById('modalContent');
+            
+            // Build out proof images preview safely
+            const imageSection = (title, url) => {
+                if (!url) return `<div class="bg-slate-50 p-3 rounded-lg text-center text-xs text-slate-400 border border-dashed border-slate-200">No photo uploaded for ${title}</div>`;
+                return `
+                    <div class="bg-slate-50 p-2 rounded-lg border border-slate-200">
+                        <span class="block text-[11px] font-bold text-slate-500 mb-1 uppercase">${title} Photo Proof</span>
+                        <a href="${url}" target="_blank" title="Click to view full image">
+                            <img src="${url}" class="w-full h-32 object-cover rounded-md border border-slate-300 hover:scale-[1.02] transition-transform cursor-zoom-in">
+                        </a>
+                    </div>
+                `;
             };
-            if(idx === "") stylesDataset.push(styleRecordObj);
-            else stylesDataset[parseInt(idx)] = Object.assign({}, stylesDataset[parseInt(idx)], styleRecordObj);
-            closeStyleModal();
-            renderNewStyleWorkspace();
+
+            content.innerHTML = `
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div><span class="text-xs text-slate-400 block font-semibold uppercase">Date</span><strong>${row.report_date}</strong></div>
+                    <div><span class="text-xs text-slate-400 block font-semibold uppercase">Line ID</span><strong>${row.line_id}</strong></div>
+                    <div><span class="text-xs text-slate-400 block font-semibold uppercase">SO #</span><strong>${row.so_number}</strong></div>
+                    <div><span class="text-xs text-slate-400 block font-semibold uppercase">Color</span><strong>${row.color}</strong></div>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-2 text-center py-2">
+                    <div class="p-2 border border-slate-100 rounded-lg"><span class="text-xs text-slate-400 block">Output Qty</span><span class="text-base font-bold">${row.daily_output_qty}</span></div>
+                    <div class="p-2 border border-slate-100 rounded-lg"><span class="text-xs text-slate-400 block">Inspected Size</span><span class="text-base font-bold">${row.qty_inspected}</span></div>
+                    <div class="p-2 border bg-emerald-50 border-emerald-200 text-emerald-800 rounded-lg"><span class="text-xs text-emerald-600 block">Final DHU</span><span class="text-base font-extrabold">${row.dhu_percentage}%</span></div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-3">
+                    <span class="block text-xs font-bold text-slate-500 uppercase mb-2">Defect Quantities Found:</span>
+                    <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                        <div class="bg-amber-50 p-2 rounded-lg border border-amber-100"><strong>Major:</strong> ${row.major_defects}</div>
+                        <div class="bg-amber-50 p-2 rounded-lg border border-amber-100"><strong>Minor:</strong> ${row.minor_defects}</div>
+                        <div class="bg-rose-50 p-2 rounded-lg border border-rose-100 text-rose-800"><strong>Critical:</strong> ${row.critical_defects}</div>
+                        <div class="bg-slate-100 p-2 rounded-lg"><strong>Threads:</strong> ${row.untrimmed_threads}</div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-3">
+                    <span class="block text-xs font-bold text-slate-500 uppercase mb-2">Live Floor Inspection Photos:</span>
+                    <div class="grid grid-cols-2 gap-3">
+                        ${imageSection('Major Defects', row.major_photo_url)}
+                        ${imageSection('Minor Defects', row.minor_photo_url)}
+                        ${imageSection('Critical Defects', row.critical_photo_url)}
+                        ${imageSection('Threads', row.thread_photo_url)}
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-3">
+                    <span class="block text-xs font-bold text-slate-500 uppercase mb-1">QC Alphanumeric Remarks:</span>
+                    <div class="p-3 bg-slate-50 rounded-lg text-xs italic text-slate-600 border border-slate-200">
+                        ${row.remarks || "No supplementary remarks submitted."}
+                    </div>
+                </div>
+            `;
+            toggleModal();
         }
 
-        function showHomeScreenView() {
-            document.getElementById('authPortalScreen').style.display = 'none';
-            document.getElementById('homeScreen').style.display = 'flex';
-            if(activeUserSession) document.getElementById('userBadgeDisplay').innerText = `👤 ${activeUserSession.full_name} [${activeUserSession.designation}]`;
-            renderNewStyleWorkspace();
+        function toggleModal() {
+            const body = document.querySelector('body');
+            const modal = document.getElementById('reportModal');
+            modal.classList.toggle('opacity-0');
+            modal.classList.toggle('pointer-events-none');
+            body.classList.toggle('modal-active');
         }
 
-        function showAuthScreenView() {
-            document.getElementById('homeScreen').style.display = 'none';
-            document.getElementById('authPortalScreen').style.display = 'flex';
-        }
-
-        function initSupabase() {
-            if (window.supabase && !databaseConnection) databaseConnection = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
-
-        async function handleLogin() {
-            initSupabase();
-            const mob = document.getElementById('loginMobile').value;
-            const pass = document.getElementById('loginPassword').value;
-            const stay = document.getElementById('loginStayLogged').checked;
-            const { data, error } = await databaseConnection.from('profiles').select('*').eq('mobile_number', mob).eq('password', pass).maybeSingle();
-            if (error || !data) return alert("🔴 Authentication failure context details incorrect.");
-            activeUserSession = data;
-            if (stay) localStorage.setItem('user_session', JSON.stringify(data));
-            else sessionStorage.setItem('user_session', JSON.stringify(data));
-            showHomeScreenView();
-        }
-
-        async function handleRegistration() {
-            initSupabase();
-            const name = document.getElementById('regName').value;
-            const des = document.getElementById('regDesignation').value;
-            const sec = document.getElementById('regSection').value;
-            const mob = document.getElementById('regMobile').value;
-            const pass = document.getElementById('regPassword').value;
-            if (pass !== document.getElementById('regConfirmPassword').value) return alert("🔴 Passwords do not match.");
-            const { error } = await databaseConnection.from('profiles').insert([{ full_name: name, designation: des, section: sec, mobile_number: mob, password: pass }]);
-            if (error) alert("🔴 Registration error: " + error.message);
-            else { alert("🟢 Registered! Please sign in."); togglePanels('login'); }
-        }
-
-        function handleLogout() {
-            localStorage.removeItem('user_session'); sessionStorage.removeItem('user_session');
-            activeUserSession = null; showAuthScreenView();
-        }
-
+        // Initial Load on Page Startup
         window.onload = function() {
-            initSupabase();
-            const saved = localStorage.getItem('user_session') || sessionStorage.getItem('user_session');
-            if (saved) { activeUserSession = JSON.parse(saved); showHomeScreenView(); }
-        }
+            fetchReports();
+        };
     </script>
 </body>
 </html>
