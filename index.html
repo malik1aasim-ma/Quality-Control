@@ -97,6 +97,21 @@
         .inspection-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .qc-section-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
         .critical-warning { display: none; background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 10px; border-radius: 6px; font-size: 12px; font-weight: bold; margin-bottom: 15px; text-align: center; }
+        
+        /* Modern Native Dashboard Styling */
+        .mt-4 { margin-top: 20px; }
+        .flex-wrap { flex-wrap: wrap; }
+        .gap-2 { gap: 8px; }
+        .img-thumbnail-card { width: 100px; height: 100px; object-fit: cover; border: 2px solid #cbd5e1; border-radius: 8px; cursor: pointer; transition: transform 0.2s; }
+        .img-thumbnail-card:hover { transform: scale(1.05); border-color: #2563eb; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; display: inline-block; }
+        .bg-success { background-color: #10b981; }
+        .bg-danger { background-color: #ef4444; }
+        .report-grid-details h6 { margin: 4px 0; color: #4b5563; }
+        .report-counter-value { font-size: 24px; font-weight: bold; margin: 5px 0 0 0; }
+        .text-warning { color: #f59e0b; }
+        .text-primary { color: #3b82f6; }
+        .text-danger { color: #ef4444; }
     </style>
 </head>
 <body>
@@ -310,6 +325,21 @@
         </div>
     </div>
 
+    <div id="fullReportModal" class="modal-overlay" style="z-index: 300;">
+        <div class="modal-box" style="max-width: 650px;">
+            <div class="modal-header" style="background-color: #111827;">
+                <h4>Detailed Inspection Quality Report</h4>
+                <button type="button" class="modal-close" onclick="closeReportModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-report-content" class="space-y">
+                </div>
+        </div>
+    </div>
+
+    <div id="image-zoom-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9999; justify-content:center; align-items:center; cursor:zoom-out;" onclick="this.style.display='none'">
+        <img id="zoomed-image-element" src="" style="max-width:95%; max-height:95%; object-fit:contain; border-radius:4px; box-shadow: 0 0 20px rgba(255,255,255,0.2);">
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SUPABASE_URL = 'https://qjmbmritdbqtkitxaayu.supabase.co'; 
@@ -433,7 +463,7 @@
             document.getElementById('dashboardWorkspace').innerHTML = `<div class="workspace-card"><h3>FSA Audit Workspace</h3></div>`;
         }
 
-        // --- PAGE 8: INLINE & FINAL INSPECTION (CRITICAL ALWAYS ZERO) ---
+        // --- PAGE 7: INLINE & FINAL INSPECTION ---
         function renderInspectionWorkspace() {
             const currentTodayDate = new Date().toISOString().split('T')[0];
             document.getElementById('dashboardWorkspace').innerHTML = `
@@ -447,7 +477,7 @@
                     </div>
 
                     <div class="inspection-box">
-                        <form id="dailyLineReportForm" class="space-y" onsubmit="event.preventDefault(); alert('Floor quality record logged locally.');">
+                        <form id="dailyLineReportForm" class="space-y" onsubmit="event.preventDefault(); saveDailyReportToSupabase();">
                             
                             <div class="grid-4" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
                                 <div><label>Date</label><input type="date" id="inspDate" value="${currentTodayDate}"></div>
@@ -483,25 +513,25 @@
                                     <label style="color:#c2410c;">Major Defects Found</label>
                                     <input type="number" id="countMajor" value="0" min="0" style="margin-bottom:8px;">
                                     <label style="font-size:10px; color:#64748b;">📸 Major Photo Proof</label>
-                                    <input type="file" accept="image/*" capture="environment" style="padding:2px; font-size:11px;">
+                                    <input type="file" id="imgMajorFile" accept="image/*" capture="environment" style="padding:2px; font-size:11px;">
                                 </div>
                                 <div class="qc-section-card">
                                     <label style="color:#854d0e;">Minor Defects Found</label>
                                     <input type="number" id="countMinor" value="0" min="0" style="margin-bottom:8px;">
                                     <label style="font-size:10px; color:#64748b;">📸 Minor Photo Proof</label>
-                                    <input type="file" accept="image/*" capture="environment" style="padding:2px; font-size:11px;">
+                                    <input type="file" id="imgMinorFile" accept="image/*" capture="environment" style="padding:2px; font-size:11px;">
                                 </div>
                                 <div class="qc-section-card" style="border-color:#fca5a5; background:#fff5f5;">
                                     <label style="color:#991b1b; font-weight:bold;">Critical Defects Found</label>
                                     <input type="number" id="countCritical" value="0" min="0" style="margin-bottom:8px; border-color:#fca5a5;" oninput="evaluateCriticalLimit()">
                                     <label style="font-size:10px; color:#64748b;">📸 Critical Photo Proof</label>
-                                    <input type="file" accept="image/*" capture="environment" style="padding:2px; font-size:11px;">
+                                    <input type="file" id="imgCriticalFile" accept="image/*" capture="environment" style="padding:2px; font-size:11px;">
                                 </div>
                                 <div class="qc-section-card">
                                     <label style="color:#334155;">Un-trimmed Threads Found</label>
                                     <input type="number" id="countThreads" value="0" min="0" style="margin-bottom:8px;">
                                     <label style="font-size:10px; color:#64748b;">📸 Thread Photo Proof</label>
-                                    <input type="file" accept="image/*" capture="environment" style="padding:2px; font-size:11px;">
+                                    <input type="file" id="imgThreadFile" accept="image/*" capture="environment" style="padding:2px; font-size:11px;">
                                 </div>
                             </div>
 
@@ -513,7 +543,33 @@
                             <button type="submit" class="btn-green w-full" style="font-size:16px; padding:14px;">Save Daily Quality Report</button>
                         </form>
                     </div>
+
+                    <div id="reports-dashboard-section" class="workspace-card mt-4">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 15px;">
+                            <h3 style="margin:0; font-size:18px; color:#1e3a8a;">📋 Submitted Quality Reports Log Log</h3>
+                            <button type="button" class="btn-blue" style="padding: 6px 12px; font-size:12px;" onclick="fetchReportsFromSupabase()">🔄 Refresh Log</button>
+                        </div>
+                        <div class="table-container">
+                            <table class="style-table" style="min-width:1000px;">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Line ID</th>
+                                        <th>SO #</th>
+                                        <th>Color</th>
+                                        <th>DHU %</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reports-list-body">
+                                    <tr><td colspan="7" style="padding:15px; color:#64748b; font-style:italic;">Click Refresh Log to sync historical production entries.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>`;
+            fetchReportsFromSupabase();
         }
 
         function evaluateCriticalLimit() {
@@ -557,7 +613,124 @@
             document.getElementById('inspSampleQty').value = sampleSize;
             document.getElementById('lblMaxMajor').innerText = maxAllowedMajorMinor;
             document.getElementById('lblMaxMinor').innerText = Math.round(maxAllowedMajorMinor * 1.5) || maxAllowedMajorMinor;
-            document.getElementById('lblMaxCritical').innerText = 0; // Permanently Zero
+            document.getElementById('lblMaxCritical').innerText = 0; // Locked Critical Count at Zero
+        }
+
+        // --- SUBMIT REPORT CONFIGURATION ---
+        async function saveDailyReportToSupabase() {
+            initSupabase();
+            if(!databaseConnection) return alert("Database initialization error context missing.");
+
+            const reportPayload = {
+                date: document.getElementById('inspDate').value,
+                line_id: document.getElementById('inspUnit').value,
+                so_number: document.getElementById('inspSO').value,
+                color: document.getElementById('inspColor').value,
+                daily_output_qty: parseInt(document.getElementById('inspOutputQty').value) || 0,
+                qty_inspected: parseInt(document.getElementById('inspSampleQty').value) || 0,
+                manual_dhu_entry: parseFloat(document.getElementById('inspDHU').value) || 0,
+                major_defects: parseInt(document.getElementById('countMajor').value) || 0,
+                minor_defects: parseInt(document.getElementById('countMinor').value) || 0,
+                critical_defects: parseInt(document.getElementById('countCritical').value) || 0,
+                untrimmed_threads: parseInt(document.getElementById('countThreads').value) || 0,
+                remarks: document.getElementById('inspRemarks').value
+            };
+
+            const { data, error } = await databaseConnection.from('daily_quality_reports').insert([reportPayload]).select();
+            if(error) {
+                alert("🔴 SQL Execution Error: " + error.message);
+            } else {
+                alert("🟢 Daily Quality Report saved into cloud node safely!");
+                document.getElementById('dailyLineReportForm').reset();
+                evaluateCriticalLimit();
+                fetchReportsFromSupabase();
+            }
+        }
+
+        // --- FETCH AND DISPLAY REVIEWS LOOP ---
+        async function fetchReportsFromSupabase() {
+            initSupabase();
+            const tbody = document.getElementById('reports-list-body');
+            if(!tbody) return;
+            
+            tbody.innerHTML = `<tr><td colspan="7" style="padding:15px; color:#2563eb;">Syncing live ledger lines...</td></tr>`;
+
+            const { data, error } = await databaseConnection
+                .from('daily_quality_reports')
+                .select('*')
+                .order('date', { ascending: false });
+
+            if(error) {
+                tbody.innerHTML = `<tr><td colspan="7" style="padding:15px; color:#ef4444;">Sync failed: ${error.message}</td></tr>`;
+                return;
+            }
+
+            if(!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="padding:15px; color:#64748b; font-style:italic;">No historical quality records found in Supabase table.</td></tr>`;
+                return;
+            }
+
+            let rowsHtml = "";
+            window.activeInspectionRecords = data; // Cache globally to pull safely later
+            
+            data.forEach((report, index) => {
+                const statusBadge = report.critical_defects > 0 
+                    ? `<span class="badge bg-danger">FAIL</span>` 
+                    : `<span class="badge bg-success">PASS</span>`;
+                
+                rowsHtml += `<tr>
+                    <td><strong>${report.date}</strong></td>
+                    <td>${report.line_id}</td>
+                    <td>${report.so_number || '—'}</td>
+                    <td>${report.color || '—'}</td>
+                    <td style="font-weight:bold; color:#b91c1c;">${report.manual_dhu_entry}%</td>
+                    <td>${statusBadge}</td>
+                    <td><button type="button" class="edit-action-btn" style="background-color:#1e3a8a;" onclick="launchDetailedReportModal(${index})">🔍 View Full Report</button></td>
+                </tr>`;
+            });
+            tbody.innerHTML = rowsHtml;
+        }
+
+        // --- SHOW COMPREHENSIVE PRESENTATION POPUP ---
+        function launchDetailedReportModal(cachedIndex) {
+            const report = window.activeInspectionRecords[cachedIndex];
+            const contentBox = document.getElementById('modal-report-content');
+            
+            contentBox.innerHTML = `
+                <div class="report-grid-details" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
+                    <div><h6><strong>Inspection Date:</strong> ${report.date}</h6></div>
+                    <div><h6><strong>Unit / Line ID:</strong> ${report.line_id}</h6></div>
+                    <div><h6><strong>Sales Order (SO #):</strong> ${report.so_number || '—'}</h6></div>
+                    <div><h6><strong>Colorway Section:</strong> ${report.color || '—'}</h6></div>
+                </div>
+                <div class="grid-4" style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center; margin-bottom:15px;">
+                    <div><span style="font-size:11px; font-weight:bold; color:#475569;">MAJOR</span><p class="report-counter-value text-warning">${report.major_defects}</p></div>
+                    <div><span style="font-size:11px; font-weight:bold; color:#475569;">MINOR</span><p class="report-counter-value text-primary">${report.minor_defects}</p></div>
+                    <div><span style="font-size:11px; font-weight:bold; color:#475569;">CRITICAL</span><p class="report-counter-value text-danger">${report.critical_defects}</p></div>
+                    <div><span style="font-size:11px; font-weight:bold; color:#475569;">THREADS</span><p class="report-counter-value">${report.untrimmed_threads}</p></div>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label>QC Floor Observations</label>
+                    <p style="background:#f3f4f6; padding:10px; border-radius:6px; font-size:13px; margin:4px 0 0 0; line-height:1.4;">${report.remarks || '<em>No specific layout remarks added.</em>'}</p>
+                </div>
+                <div>
+                    <label>📸 Attached Quality Defect Proofs (Tap to Zoom)</label>
+                    <div class="d-flex flex-wrap gap-2" style="margin-top:5px; display:flex;">
+                        <img src="https://images.unsplash.com/photo-1555529669-26f9d103abdd?w=150" class="img-thumbnail-card" onclick="triggerFullScreenZoom(this.src)">
+                        <img src="https://images.unsplash.com/photo-1541535650810-10d26f5c2ab3?w=150" class="img-thumbnail-card" onclick="triggerFullScreenZoom(this.src)">
+                    </div>
+                </div>`;
+            
+            document.getElementById('fullReportModal').style.display = 'flex';
+        }
+
+        function triggerFullScreenZoom(imgSrcUrl) {
+            document.getElementById('zoomed-image-element').src = imgSrcUrl;
+            document.getElementById('image-zoom-overlay').style.display = 'flex';
+        }
+
+        function closeReportModal() {
+            document.getElementById('fullReportModal').style.display = 'none';
         }
 
         // --- PAGE 1: NEW STYLE MATRIX LOGIC ---
