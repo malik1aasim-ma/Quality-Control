@@ -17,14 +17,14 @@
         <div class="bg-white p-8 rounded-xl shadow-md border border-slate-200 max-w-sm w-full space-y-4">
             <h2 class="text-xl font-bold text-center text-slate-900">QC System Authentication</h2>
             <div>
-                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Inspector Full Name</label>
-                <input type="text" id="authName" placeholder="Enter your name" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-hidden">
+                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Mobile Number / ID</label>
+                <input type="text" id="authMobile" placeholder="Enter mobile number" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-hidden">
             </div>
             <div>
-                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Access PIN / Password</label>
-                <input type="password" id="authPass" placeholder="••••" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-hidden">
+                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Password</label>
+                <input type="password" id="authPass" placeholder="••••••••" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-hidden">
             </div>
-            <button onclick="handleLogin()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 rounded-lg text-sm transition-colors cursor-pointer">
+            <button onclick="handleLogin()" id="loginBtn" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 rounded-lg text-sm transition-colors cursor-pointer">
                 Log In to Workspace
             </button>
         </div>
@@ -35,7 +35,7 @@
         <div class="bg-white rounded-xl shadow-xs p-6 mb-6 border border-slate-200 flex justify-between items-center">
             <div>
                 <h1 class="text-2xl font-bold text-slate-900">Afrida Fashion Quality Panel</h1>
-                <p class="text-xs text-slate-500 font-medium mt-0.5" id="userInfo">Inspector: Active QC</p>
+                <p class="text-xs text-slate-500 font-medium mt-0.5" id="userInfo">Inspector: Checking Session...</p>
             </div>
             <button onclick="handleLogout()" class="bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-200 transition-colors cursor-pointer">
                 Log Out
@@ -188,12 +188,10 @@
     </div>
 
     <script>
-        // Set dynamic credentials keys setup
         const SUPABASE_URL = "https://qjmbmritdbqtkitxaayu.supabase.co"; 
         const SUPABASE_ANON_KEY = "sb_publishable_CtGzYhf4dI-QKgTO5Y9v7A_97GIWNW4";
         let supabase = window.Supabase ? Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-        // Simple User Sessions Handlers
         function checkUserSession() {
             const currentSession = localStorage.getItem('user_session') || sessionStorage.getItem('user_session');
             if (currentSession) {
@@ -201,7 +199,7 @@
                     const parsed = JSON.parse(currentSession);
                     document.getElementById('loginScreen').classList.add('hidden');
                     document.getElementById('dashboardScreen').classList.remove('hidden');
-                    document.getElementById('userInfo').innerText = `Inspector: ${parsed.name || 'Active QC'}`;
+                    document.getElementById('userInfo').innerText = `Inspector: ${parsed.name} (${parsed.designation || 'QC Team'})`;
                     if(supabase) fetchReports();
                 } catch(e) { clearSession(); }
             } else {
@@ -210,15 +208,49 @@
             }
         }
 
-        function handleLogin() {
-            const name = document.getElementById('authName').value.trim();
+        async function handleLogin() {
+            const mobile = document.getElementById('authMobile').value.trim();
             const pass = document.getElementById('authPass').value.trim();
+            const btn = document.getElementById('loginBtn');
 
-            if (!name) { alert("Please input active inspector identity profile name."); return; }
-            
-            const payload = { name: name, authAt: new Date().toISOString() };
-            localStorage.setItem('user_session', JSON.stringify(payload));
-            checkUserSession();
+            if (!mobile || !pass) { 
+                alert("Please input your registered mobile number and password."); 
+                return; 
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Verifying Credentials...";
+
+            try {
+                // Securely query your existing registration table using mobile_number and password
+                const { data, error } = await supabase
+                    .from('users') // Checks your original 'users' table
+                    .select('full_name, designation')
+                    .eq('mobile_number', mobile)
+                    .eq('password', pass)
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                if (!data) {
+                    alert("Authentication Failed: Invalid Mobile Number or Password.");
+                    return;
+                }
+
+                // Match found! Save their profile token locally
+                const payload = { 
+                    name: data.full_name, 
+                    designation: data.designation,
+                    authAt: new Date().toISOString() 
+                };
+                localStorage.setItem('user_session', JSON.stringify(payload));
+                checkUserSession();
+            } catch (err) {
+                alert("Server Authentication Error: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Log In to Workspace";
+            }
         }
 
         function handleLogout() {
@@ -235,7 +267,6 @@
         // Initialize Form Date Defaults
         document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
 
-        // System Standard Formula mapping arrays bounds
         const getSampleSizeAndLimits = (output) => {
             if (output <= 0) return { size: 0, major: 0, minor: 0, critical: 0 };
             if (output <= 8) return { size: 2, major: 0, minor: 0, critical: 0 };
@@ -274,7 +305,6 @@
 
         [outputInput, majorInput, minorInput, criticalInput, threadInput].forEach(el => el.addEventListener('input', recalculateMetrics));
 
-        // File Binary Base Pipeline Operations Engine
         async function uploadImageFile(fileInputId, folderName) {
             const fileInput = document.getElementById(fileInputId);
             if (!fileInput || fileInput.files.length === 0) return null;
@@ -300,7 +330,6 @@
             return publicUrlData.publicUrl;
         }
 
-        // Form Submit listener tracking hook setup
         document.getElementById('qualityForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
@@ -308,13 +337,11 @@
             btn.innerText = "Uploading Photos & Saving Record...";
 
             try {
-                // Upload binaries files context
                 const majorUrl = await uploadImageFile('majorFile', 'major');
                 const minorUrl = await uploadImageFile('minorFile', 'minor');
                 const criticalUrl = await uploadImageFile('criticalFile', 'critical');
                 const threadUrl = await uploadImageFile('threadFile', 'thread');
 
-                // Mapping rows targets setup schema definition model context
                 const reportPayload = {
                     report_date: document.getElementById('reportDate').value,
                     line_id: document.getElementById('lineId').value,
@@ -337,7 +364,7 @@
                 const { error } = await supabase.from('daily_quality_reports').insert([reportPayload]);
                 if (error) throw error;
 
-                alert("Inspection record saved successfully into remote server logs!");
+                alert("Inspection record saved successfully!");
                 document.getElementById('qualityForm').reset();
                 document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
                 recalculateMetrics();
@@ -350,11 +377,10 @@
             }
         });
 
-        // Pull active historical records stream mapping logs context
         async function fetchReports() {
             const body = document.getElementById('reportLogBody');
             if(!body) return;
-            body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">Loading metrics entries rows stream...</td></tr>`;
+            body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">Loading metrics entries...</td></tr>`;
 
             const { data, error } = await supabase
                 .from('daily_quality_reports')
@@ -367,14 +393,14 @@
             }
 
             if (!data || data.length === 0) {
-                body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">No active reports registered inside database yet.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">No active reports inside database yet.</td></tr>`;
                 return;
             }
 
             body.innerHTML = "";
             data.forEach(row => {
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition-colors border-b border-slate-100 animate-fade-in";
+                tr.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
                 tr.innerHTML = `
                     <td class="p-3 font-medium text-slate-900">${row.report_date}</td>
                     <td class="p-3">${row.line_id}</td>
@@ -392,10 +418,8 @@
             });
         }
 
-        // Inside display dashboard view mapping rows
         function viewReportDetails(row) {
             const content = document.getElementById('modalContent');
-            
             const imageSection = (title, url) => {
                 if (!url) return `<div class="bg-slate-50 p-3 rounded-lg text-center text-xs text-slate-400 border border-dashed border-slate-200">No photo uploaded for ${title}</div>`;
                 return `
@@ -445,7 +469,7 @@
                 <div class="border-t border-slate-100 pt-3">
                     <span class="block text-xs font-bold text-slate-500 uppercase mb-1">Inspector Log Remarks:</span>
                     <div class="p-3 bg-slate-50 rounded-lg text-xs text-slate-600 border border-slate-200 italic">
-                        ${row.remarks || "No evaluation remarks recorded for this submission entry parameters."}
+                        ${row.remarks || "No evaluation remarks recorded."}
                     </div>
                 </div>
             `;
@@ -460,7 +484,6 @@
             body.classList.toggle('modal-active');
         }
 
-        // Initialize script verification lookups on screen startup runtime hooks mount
         window.onload = function() {
             checkUserSession();
         };
