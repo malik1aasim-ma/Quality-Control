@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Quality Inspection Log (AQL 2.5)</title>
+    <title>Quality Control Hub & Daily Log</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -11,17 +11,40 @@
         body.modal-active { overflow: hidden; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased pdf-content">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
 
-    <div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4 bg-slate-100">
+        <div class="bg-white p-8 rounded-xl shadow-md border border-slate-200 max-w-sm w-full space-y-4">
+            <h2 class="text-xl font-bold text-center text-slate-900">QC System Authentication</h2>
+            <div>
+                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Inspector Full Name</label>
+                <input type="text" id="authName" placeholder="Enter your name" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-hidden">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Access PIN / Password</label>
+                <input type="password" id="authPass" placeholder="••••" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-hidden">
+            </div>
+            <button onclick="handleLogin()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 rounded-lg text-sm transition-colors cursor-pointer">
+                Log In to Workspace
+            </button>
+        </div>
+    </div>
+
+    <div id="dashboardScreen" class="hidden max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        
         <div class="bg-white rounded-xl shadow-xs p-6 mb-6 border border-slate-200 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                Daily Quality Inspection Log (AQL 2.5)
-            </h1>
-            <div id="userInfo" class="text-xs text-slate-500 font-medium"></div>
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Afrida Fashion Quality Panel</h1>
+                <p class="text-xs text-slate-500 font-medium mt-0.5" id="userInfo">Inspector: Active QC</p>
+            </div>
+            <button onclick="handleLogout()" class="bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-200 transition-colors cursor-pointer">
+                Log Out
+            </button>
         </div>
 
         <form id="qualityForm" class="bg-white rounded-xl shadow-xs p-6 mb-6 border border-slate-200 space-y-6">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">New Inspection Entry (AQL 2.5)</h3>
+            
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Date</label>
@@ -51,7 +74,7 @@
                     <input type="number" id="inspectedQty" readonly class="w-full bg-slate-200 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 focus:outline-hidden">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-rose-700 mb-1">Manual DHU Entry (%)</label>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-rose-700 mb-1">Calculated DHU (%)</label>
                     <input type="text" id="dhuPercent" readonly class="w-full bg-slate-200 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 focus:outline-hidden">
                 </div>
             </div>
@@ -103,7 +126,7 @@
 
             <div>
                 <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">QC Alphanumeric Remarks</label>
-                <textarea id="remarks" rows="2" placeholder="Describe layout observation notes..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"></textarea>
+                <textarea id="remarks" rows="2" placeholder="Describe floor observations..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"></textarea>
             </div>
 
             <button type="submit" id="submitBtn" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition-colors text-sm cursor-pointer flex items-center justify-center gap-2">
@@ -135,7 +158,7 @@
                     </thead>
                     <tbody id="reportLogBody" class="divide-y divide-slate-100 text-slate-700">
                         <tr>
-                            <td colspan="7" class="p-4 text-center text-slate-400 text-xs">Loading reports...</td>
+                            <td colspan="7" class="p-4 text-center text-slate-400 text-xs">Awaiting session verification...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -165,28 +188,54 @@
     </div>
 
     <script>
-        // CONFIGURATION: Live project URL and API keys loaded successfully
+        // Set dynamic credentials keys setup
         const SUPABASE_URL = "https://qjmbmritdbqtkitxaayu.supabase.co"; 
         const SUPABASE_ANON_KEY = "sb_publishable_CtGzYhf4dI-QKgTO5Y9v7A_97GIWNW4";
+        let supabase = window.Supabase ? Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-        let supabase;
-
-        // Initialize Supabase and check session handler securely
-        function initSupabase() {
-            supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            const session = localStorage.getItem('user_session') || sessionStorage.getItem('user_session');
-            if (session) {
+        // Simple User Sessions Handlers
+        function checkUserSession() {
+            const currentSession = localStorage.getItem('user_session') || sessionStorage.getItem('user_session');
+            if (currentSession) {
                 try {
-                    const user = JSON.parse(session);
-                    document.getElementById('userInfo').innerText = `Inspector: ${user.name || 'Active QC'}`;
-                } catch(e) { console.error(e); }
+                    const parsed = JSON.parse(currentSession);
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('dashboardScreen').classList.remove('hidden');
+                    document.getElementById('userInfo').innerText = `Inspector: ${parsed.name || 'Active QC'}`;
+                    if(supabase) fetchReports();
+                } catch(e) { clearSession(); }
+            } else {
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('dashboardScreen').classList.add('hidden');
             }
         }
 
-        // Auto Setup Date Field to Current Date
+        function handleLogin() {
+            const name = document.getElementById('authName').value.trim();
+            const pass = document.getElementById('authPass').value.trim();
+
+            if (!name) { alert("Please input active inspector identity profile name."); return; }
+            
+            const payload = { name: name, authAt: new Date().toISOString() };
+            localStorage.setItem('user_session', JSON.stringify(payload));
+            checkUserSession();
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('user_session');
+            sessionStorage.removeItem('user_session');
+            checkUserSession();
+        }
+
+        function clearSession() {
+            localStorage.removeItem('user_session');
+            checkUserSession();
+        }
+
+        // Initialize Form Date Defaults
         document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
 
-        // AQL 2.5 Calculations
+        // System Standard Formula mapping arrays bounds
         const getSampleSizeAndLimits = (output) => {
             if (output <= 0) return { size: 0, major: 0, minor: 0, critical: 0 };
             if (output <= 8) return { size: 2, major: 0, minor: 0, critical: 0 };
@@ -225,7 +274,7 @@
 
         [outputInput, majorInput, minorInput, criticalInput, threadInput].forEach(el => el.addEventListener('input', recalculateMetrics));
 
-        // Upload Image Helper function
+        // File Binary Base Pipeline Operations Engine
         async function uploadImageFile(fileInputId, folderName) {
             const fileInput = document.getElementById(fileInputId);
             if (!fileInput || fileInput.files.length === 0) return null;
@@ -240,7 +289,7 @@
                 .upload(filePath, file);
 
             if (error) {
-                console.error("Storage upload error:", error);
+                console.error("Storage bucket upload fault:", error);
                 return null;
             }
 
@@ -251,21 +300,21 @@
             return publicUrlData.publicUrl;
         }
 
-        // Form Submission Logic
+        // Form Submit listener tracking hook setup
         document.getElementById('qualityForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
-            btn.innerText = "Processing & Uploading Proofs...";
+            btn.innerText = "Uploading Photos & Saving Record...";
 
             try {
-                // 1. Upload images if they exist
+                // Upload binaries files context
                 const majorUrl = await uploadImageFile('majorFile', 'major');
                 const minorUrl = await uploadImageFile('minorFile', 'minor');
                 const criticalUrl = await uploadImageFile('criticalFile', 'critical');
                 const threadUrl = await uploadImageFile('threadFile', 'thread');
 
-                // 2. Submit record metadata to DB table
+                // Mapping rows targets setup schema definition model context
                 const reportPayload = {
                     report_date: document.getElementById('reportDate').value,
                     line_id: document.getElementById('lineId').value,
@@ -286,27 +335,26 @@
                 };
 
                 const { error } = await supabase.from('daily_quality_reports').insert([reportPayload]);
-
                 if (error) throw error;
 
-                alert("Inspection quality report and proof images saved successfully to Supabase!");
+                alert("Inspection record saved successfully into remote server logs!");
                 document.getElementById('qualityForm').reset();
                 document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
                 recalculateMetrics();
                 fetchReports();
             } catch (err) {
-                alert("Database Submission Error: " + err.message);
+                alert("SQL Execution Error: " + err.message);
             } finally {
                 btn.disabled = false;
                 btn.innerText = "Save Daily Quality Report";
             }
         });
 
-        // Load and Fetch Logs
+        // Pull active historical records stream mapping logs context
         async function fetchReports() {
             const body = document.getElementById('reportLogBody');
-            if (!body) return;
-            body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">Fetching latest log records...</td></tr>`;
+            if(!body) return;
+            body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">Loading metrics entries rows stream...</td></tr>`;
 
             const { data, error } = await supabase
                 .from('daily_quality_reports')
@@ -314,19 +362,19 @@
                 .order('report_date', { ascending: false });
 
             if (error) {
-                body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-rose-500">Failed to load logs: ${error.message}</td></tr>`;
+                body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-rose-500">Retrieval Fault: ${error.message}</td></tr>`;
                 return;
             }
 
             if (!data || data.length === 0) {
-                body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">No inspection reports recorded yet.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">No active reports registered inside database yet.</td></tr>`;
                 return;
             }
 
             body.innerHTML = "";
             data.forEach(row => {
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
+                tr.className = "hover:bg-slate-50 transition-colors border-b border-slate-100 animate-fade-in";
                 tr.innerHTML = `
                     <td class="p-3 font-medium text-slate-900">${row.report_date}</td>
                     <td class="p-3">${row.line_id}</td>
@@ -344,18 +392,17 @@
             });
         }
 
-        // Modal View Displaying Live Saved Photos
+        // Inside display dashboard view mapping rows
         function viewReportDetails(row) {
             const content = document.getElementById('modalContent');
             
-            // Build out proof images preview safely
             const imageSection = (title, url) => {
                 if (!url) return `<div class="bg-slate-50 p-3 rounded-lg text-center text-xs text-slate-400 border border-dashed border-slate-200">No photo uploaded for ${title}</div>`;
                 return `
                     <div class="bg-slate-50 p-2 rounded-lg border border-slate-200">
-                        <span class="block text-[11px] font-bold text-slate-500 mb-1 uppercase">${title} Photo Proof</span>
-                        <a href="${url}" target="_blank" title="Click to view full image">
-                            <img src="${url}" class="w-full h-32 object-cover rounded-md border border-slate-300 hover:scale-[1.02] transition-transform cursor-zoom-in">
+                        <span class="block text-[11px] font-bold text-slate-500 mb-1 uppercase">${title}</span>
+                        <a href="${url}" target="_blank">
+                            <img src="${url}" class="w-full h-32 object-cover rounded-md border border-slate-300 hover:opacity-90 cursor-zoom-in">
                         </a>
                     </div>
                 `;
@@ -363,20 +410,20 @@
 
             content.innerHTML = `
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    <div><span class="text-xs text-slate-400 block font-semibold uppercase">Date</span><strong>${row.report_date}</strong></div>
-                    <div><span class="text-xs text-slate-400 block font-semibold uppercase">Line ID</span><strong>${row.line_id}</strong></div>
-                    <div><span class="text-xs text-slate-400 block font-semibold uppercase">SO #</span><strong>${row.so_number}</strong></div>
-                    <div><span class="text-xs text-slate-400 block font-semibold uppercase">Color</span><strong>${row.color}</strong></div>
+                    <div><span class="text-xs text-slate-400 block uppercase font-medium">Date</span><strong>${row.report_date}</strong></div>
+                    <div><span class="text-xs text-slate-400 block uppercase font-medium">Line ID</span><strong>${row.line_id}</strong></div>
+                    <div><span class="text-xs text-slate-400 block uppercase font-medium">SO #</span><strong>${row.so_number}</strong></div>
+                    <div><span class="text-xs text-slate-400 block uppercase font-medium">Color</span><strong>${row.color}</strong></div>
                 </div>
                 
-                <div class="grid grid-cols-3 gap-2 text-center py-2">
+                <div class="grid grid-cols-3 gap-2 text-center py-1">
                     <div class="p-2 border border-slate-100 rounded-lg"><span class="text-xs text-slate-400 block">Output Qty</span><span class="text-base font-bold">${row.daily_output_qty}</span></div>
-                    <div class="p-2 border border-slate-100 rounded-lg"><span class="text-xs text-slate-400 block">Inspected Size</span><span class="text-base font-bold">${row.qty_inspected}</span></div>
-                    <div class="p-2 border bg-emerald-50 border-emerald-200 text-emerald-800 rounded-lg"><span class="text-xs text-emerald-600 block">Final DHU</span><span class="text-base font-extrabold">${row.dhu_percentage}%</span></div>
+                    <div class="p-2 border border-slate-100 rounded-lg"><span class="text-xs text-slate-400 block">Inspected</span><span class="text-base font-bold">${row.qty_inspected}</span></div>
+                    <div class="p-2 border bg-emerald-50 border-emerald-100 text-emerald-800 rounded-lg"><span class="text-xs text-emerald-600 block">Final DHU</span><span class="text-base font-extrabold">${row.dhu_percentage}%</span></div>
                 </div>
 
                 <div class="border-t border-slate-100 pt-3">
-                    <span class="block text-xs font-bold text-slate-500 uppercase mb-2">Defect Quantities Found:</span>
+                    <span class="block text-xs font-bold text-slate-500 uppercase mb-2">Defects Registry Counters:</span>
                     <div class="grid grid-cols-4 gap-2 text-center text-xs">
                         <div class="bg-amber-50 p-2 rounded-lg border border-amber-100"><strong>Major:</strong> ${row.major_defects}</div>
                         <div class="bg-amber-50 p-2 rounded-lg border border-amber-100"><strong>Minor:</strong> ${row.minor_defects}</div>
@@ -388,17 +435,17 @@
                 <div class="border-t border-slate-100 pt-3">
                     <span class="block text-xs font-bold text-slate-500 uppercase mb-2">Live Floor Inspection Photos:</span>
                     <div class="grid grid-cols-2 gap-3">
-                        ${imageSection('Major Defects', row.major_photo_url)}
-                        ${imageSection('Minor Defects', row.minor_photo_url)}
-                        ${imageSection('Critical Defects', row.critical_photo_url)}
-                        ${imageSection('Threads', row.thread_photo_url)}
+                        ${imageSection('Major Defect Proof', row.major_photo_url)}
+                        ${imageSection('Minor Defect Proof', row.minor_photo_url)}
+                        ${imageSection('Critical Defect Proof', row.critical_photo_url)}
+                        ${imageSection('Untrimmed Thread Proof', row.thread_photo_url)}
                     </div>
                 </div>
 
                 <div class="border-t border-slate-100 pt-3">
-                    <span class="block text-xs font-bold text-slate-500 uppercase mb-1">QC Alphanumeric Remarks:</span>
-                    <div class="p-3 bg-slate-50 rounded-lg text-xs italic text-slate-600 border border-slate-200">
-                        ${row.remarks || "No supplementary remarks submitted."}
+                    <span class="block text-xs font-bold text-slate-500 uppercase mb-1">Inspector Log Remarks:</span>
+                    <div class="p-3 bg-slate-50 rounded-lg text-xs text-slate-600 border border-slate-200 italic">
+                        ${row.remarks || "No evaluation remarks recorded for this submission entry parameters."}
                     </div>
                 </div>
             `;
@@ -413,10 +460,9 @@
             body.classList.toggle('modal-active');
         }
 
-        // Initial Load on Page Startup
+        // Initialize script verification lookups on screen startup runtime hooks mount
         window.onload = function() {
-            initSupabase();
-            fetchReports();
+            checkUserSession();
         };
     </script>
 </body>
